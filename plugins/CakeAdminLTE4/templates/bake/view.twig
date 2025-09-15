@@ -1,0 +1,25 @@
+{% set pk = Bake.primaryKey(data.schema) %}
+<div class="card">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <h3 class="card-title">{{ singularHumanName }} details</h3>
+    <div class="card-tools">
+      <?= $this->Html->link(__('Edit'), ['action' => 'edit', ${{ singularVar }}->{{ pk|first }}], ['class' => 'btn btn-warning btn-sm']) ?>
+      <?= $this->Form->postLink(__('Delete'), ['action' => 'delete', ${{ singularVar }}->{{ pk|first }}], ['confirm' => __('Are you sure?'), 'class' => 'btn btn-danger btn-sm']) ?>
+      <?= $this->Html->link(__('Back'), ['action' => 'index'], ['class' => 'btn btn-secondary btn-sm']) ?>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-striped">
+        <tbody>
+          {% for field in fields %}
+          <tr>
+            <th style="width: 20%"><?= __('{{ field|humanize }}') ?></th>
+            <td><?= h(${{ singularVar }}->{{ field }}) ?></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

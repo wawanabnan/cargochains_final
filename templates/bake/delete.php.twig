@@ -1,0 +1,15 @@
+{# AdminLTE Delete Confirmation Template Skeleton #}
+<div class="card card-danger">
+  <div class="card-header">
+    <h3 class="card-title"><?= __('Delete {{ singularHumanName }}') ?></h3>
+  </div>
+  <div class="card-body">
+    <p><?= __('Are you sure you want to delete # {0}?', ${{ singularVar }}->{{ primaryKey[0] }}) ?></p>
+    <?= $this->Form->postLink(
+      __('Confirm Delete'),
+      ['action' => 'delete', ${{ singularVar }}->{{ primaryKey[0] }}],
+      ['class' => 'btn btn-danger', 'confirm' => __('Are you sure?')]
+    ) ?>
+    <?= $this->Html->link(__('Cancel'), ['action' => 'index'], ['class' => 'btn btn-secondary']) ?>
+  </div>
+</div>

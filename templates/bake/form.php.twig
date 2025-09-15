@@ -1,0 +1,23 @@
+{# AdminLTE Form Template Skeleton #}
+<div class="card card-primary">
+  <div class="card-header">
+    <h3 class="card-title"><?= $this->fetch('title') ?: __('{{ singularHumanName }} Form') ?></h3>
+  </div>
+  <div class="card-body">
+    <?= $this->Form->create(${{ singularVar }}) ?>
+    <div class="row g-3">
+      {%- for field in fields %}
+        {%- if field not in primaryKey %}
+        <div class="col-md-6">
+          <?= $this->Form->control('{{ field }}', ['class' => 'form-control']) ?>
+        </div>
+        {%- endif %}
+      {%- endfor %}
+    </div>
+  </div>
+  <div class="card-footer d-flex gap-2">
+    <?= $this->Form->button(__('Save'), ['class' => 'btn btn-primary']) ?>
+    <?= $this->Html->link(__('Cancel'), ['action' => 'index'], ['class' => 'btn btn-secondary']) ?>
+    <?= $this->Form->end() ?>
+  </div>
+</div>

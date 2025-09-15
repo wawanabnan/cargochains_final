@@ -1,0 +1,25 @@
+{# AdminLTE View Template Skeleton #}
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h3 class="card-title">{{ singularHumanName }} #<?= h(${{ singularVar }}->{{ primaryKey[0] }}) ?></h3>
+    <div class="card-tools">
+      <?= $this->Html->link(__('Edit'), ['action' => 'edit', ${{ singularVar }}->{{ primaryKey[0] }}], ['class' => 'btn btn-warning btn-sm']) ?>
+      <?= $this->Form->postLink(__('Delete'), ['action' => 'delete', ${{ singularVar }}->{{ primaryKey[0] }}], ['confirm' => __('Are you sure you want to delete # {0}?', ${{ singularVar }}->{{ primaryKey[0] }}), 'class' => 'btn btn-danger btn-sm']) ?>
+      <?= $this->Html->link(__('Back'), ['action' => 'index'], ['class' => 'btn btn-secondary btn-sm']) ?>
+    </div>
+  </div>
+  <div class="card-body">
+    <dl class="row">
+      {%- for field in fields %}
+        <dt class="col-sm-3">{{ field|humanize }}</dt>
+        <dd class="col-sm-9">
+          {%- if field in ['created','modified','updated','deleted'] %}
+            <?= h(${{ singularVar }}->{{ field }}?->format('Y-m-d H:i')) ?>
+          {%- else %}
+            <?= h(${{ singularVar }}->{{ field }}) ?>
+          {%- endif %}
+        </dd>
+      {%- endfor %}
+    </dl>
+  </div>
+</div>

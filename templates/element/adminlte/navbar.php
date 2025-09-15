@@ -33,23 +33,12 @@
             <!--begin::User Menu Dropdown-->
             <li class="nav-item dropdown user-menu">
               <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
-                <img
-                 
-                  src="{% static 'adminlte/img/bmw.jpg' %}"
-                  class="user-image rounded-circle shadow"
-                  alt="User Image"
-                />
-                
+              
               </a>
               <ul class="dropdown-menu dropdown-menu-lg dropdown-menu-end">
                 <!--begin::User Image-->
                 <li class="user-header text-bg-primary">
-                  <img
-                     src="{% static 'adminlte/img/bmw.jpg' %}"
-                    class="rounded-circle shadow"
-                    alt="User Image"
-                  />
-                  <p>
+                 
                     Teguh Andriyanto - Web Developer
                     <small>Member since Nov. 2025</small>
                   </p>

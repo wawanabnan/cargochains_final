@@ -1,0 +1,20 @@
+{
+  "name": "local/cake-adminlte4",
+  "type": "cakephp-plugin",
+  "license": "MIT",
+  "require": {
+    "php": ">=8.1",
+    "cakephp/cakephp": ">=5.0",
+    "cakephp/bake": ">=2.9"
+  },
+  "autoload": {
+    "psr-4": {
+      "CakeAdminLTE4\\": "src/"
+    }
+  },
+  "extra": {
+    "cakephp-plugin": {
+      "name": "CakeAdminLTE4"
+    }
+  }
+}

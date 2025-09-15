@@ -16,6 +16,10 @@ return static function (RouteBuilder $routes): void {
             'action' => 'add',
             '_name' => 'partners:add',
         ]);
+		
+		
+		
+		
         $routes->fallbacks(DashedRoute::class);
     });
 };

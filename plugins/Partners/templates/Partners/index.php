@@ -4,9 +4,14 @@
  * @var iterable<\Cake\Datasource\EntityInterface> $partners
  */
 ?>
-     <table class="table">
+<div class="partners index content">
+    <?= $this->Html->link(__('New Partner'), ['action' => 'add'], ['class' => 'button float-right']) ?>
+    <h3><?= __('Partners') ?></h3>
+    <div class="table-responsive">
+        <table>
             <thead>
                 <tr>
+                    <th><?= $this->Paginator->sort('id') ?></th>
                     <th><?= $this->Paginator->sort('code') ?></th>
                     <th><?= $this->Paginator->sort('name') ?></th>
                     <th><?= $this->Paginator->sort('tax_id') ?></th>
@@ -20,11 +25,15 @@
                     <th><?= $this->Paginator->sort('is_agent') ?></th>
                     <th><?= $this->Paginator->sort('is_shipper') ?></th>
                     <th><?= $this->Paginator->sort('is_consignee') ?></th>
+                    <th><?= $this->Paginator->sort('created') ?></th>
+                    <th><?= $this->Paginator->sort('modified') ?></th>
+                    <th class="actions"><?= __('Actions') ?></th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach ($partners as $partner): ?>
                 <tr>
+                    <td><?= $this->Number->format($partner->id) ?></td>
                     <td><?= h($partner->code) ?></td>
                     <td><?= h($partner->name) ?></td>
                     <td><?= h($partner->tax_id) ?></td>
@@ -38,6 +47,20 @@
                     <td><?= h($partner->is_agent) ?></td>
                     <td><?= h($partner->is_shipper) ?></td>
                     <td><?= h($partner->is_consignee) ?></td>
+                    <td><?= h($partner->created) ?></td>
+                    <td><?= h($partner->modified) ?></td>
+                    <td class="actions">
+                        <?= $this->Html->link(__('View'), ['action' => 'view', $partner->id]) ?>
+                        <?= $this->Html->link(__('Edit'), ['action' => 'edit', $partner->id]) ?>
+                        <?= $this->Form->postLink(
+                            __('Delete'),
+                            ['action' => 'delete', $partner->id],
+                            [
+                                'method' => 'delete',
+                                'confirm' => __('Are you sure you want to delete # {0}?', $partner->id),
+                            ]
+                        ) ?>
+                    </td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -53,3 +76,4 @@
         </ul>
         <p><?= $this->Paginator->counter(__('Page {{page}} of {{pages}}, showing {{current}} record(s) out of {{count}} total')) ?></p>
     </div>
+</div>
