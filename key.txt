@@ -1,0 +1,9 @@
+klpop8ud5zsip7zloht3kglaf0it7sau7hlm7yfscb3cjxsq
+
+Superuser added:
+Id: fdb04ee2-4bd0-46ec-9447-2f08a1566acc
+Username: superadmin
+Email: superadmin@example.com
+Role: admin
+Password: 73cf947a6d414a15a5dd21cfba406a7d
+

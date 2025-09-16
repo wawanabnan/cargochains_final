@@ -110,7 +110,17 @@
 					</td>
                     
 					<td><?= h($quotation->valid_until) ?></td>
-					<td><?= $quotation->hasValue('sales_service') ? $this->Html->link($quotation->sales_service->name, ['controller' => 'SalesServices', 'action' => 'view', $quotation->sales_service->id]) : '' ?></td>
+					<td>
+						<?php if (!empty($quotation->sales_service)) :
+							  $svc = $quotation->sales_service;
+							  echo h(
+								  $svc->parent_service
+									? $svc->parent_service->name . ' - ' . $svc->name
+									: $svc->name
+							  );
+						  endif; ?>
+					</td>
+
                     <td><?= $quotation->sales_user_id === null ? '' : $this->Number->format($quotation->sales_user_id) ?></td>
                     <td><?= $quotation->has('payment_term') ? h($quotation->payment_term->name) : '-' ?></td>
                     <td><?= h($quotation->currency_id) ?></td>      

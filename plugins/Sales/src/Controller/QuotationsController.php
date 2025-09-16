@@ -3,193 +3,261 @@ declare(strict_types=1);
 
 namespace Sales\Controller;
 
-use Sales\Controller\AppController;
+use Cake\I18n\FrozenDate;
+use Cake\Http\Exception\NotFoundException;
 
-/**
- * Quotations Controller
- *
- * @property \Sales\Model\Table\QuotationsTable $Quotations
- */
 class QuotationsController extends AppController
 {
+    private const SESSION_KEY = 'Sales.Quotation.header';
+
     /**
-     * Index method
-     *
-     * @return \Cake\Http\Response|null|void Renders view
+     * INDEX: daftar quotation
      */
-	 
-    public function initialize(): void
-    {
-        parent::initialize();
-		$this->paginate = [
-            'limit' => 20,
-            'order' => ['Quotations.created' => 'DESC'],
-            'sortableFields' => [
-                'Quotations.code', 'Quotations.created', 'Quotations.status', 'Quotations.total',
-                'Customer.name', 'Quotations.quotation_date',
-				'PaymentTerms.name', // ✅ bisa sort di header
-
-            ],
-        ];
-	}
-
     public function index()
     {
-		
-		$q      = trim((string)$this->request->getQuery('q', ''));
-        $status = $this->request->getQuery('status');
-        $from   = $this->request->getQuery('from');
-        $to     = $this->request->getQuery('to');
-        $group  = $this->request->getQuery('group');
-
-        // contain utk render relasi; join utk filter/sort di kolom relasi
         $query = $this->Quotations->find()
-            ->contain(['Customer','PaymentTerms','SalesServices'])
-            ->leftJoinWith('Customer'); // penting agar WHERE/ORDER di Customer.* berfungsi
+        ->contain([
+            'Customers',
+            'SalesServices' => ['ParentServices'],
+            'PaymentTerms',
+        ]);
 
-        if ($q !== '') {
-            $query->where([
-                'OR' => [
-                    'Quotations.code LIKE'  => "%{$q}%",
-                    'Customer.name LIKE'    => "%{$q}%",
-                ]
-            ]);
-        }
+    $quotations = $this->paginate(
+        $query,
+        [
+            'order' => ['Quotations.created' => 'DESC'],
+            'limit' => 20,
+        ]
+    );
 
-        if (!empty($status)) {
-            $query->where(['Quotations.status' => $status]);
-        }
+    $this->set(compact('quotations'));
 
-        if (!empty($from)) {
-            $query->where(['Quotations.quotation_date >=' => new FrozenDate($from)]);
-        }
-		
-		 if (!empty($to)) {
-            $query->where(['Quotations.quotation_date <=' => new FrozenDate($to)]);
-        }
-
-        // "Group By" di UI cukup kita terjemahkan jadi pengurutan
-        if ($group === 'status') {
-            $query->orderAsc('Quotations.status')->orderDesc('Quotations.created');
-        } elseif ($group === 'customer') {
-            $query->orderAsc('Customer.name')->orderDesc('Quotations.created');
-        }
-
-        $quotations = $this->paginate($query);
-        $this->set(compact('quotations'));
-		
-		
     }
 
-	 public function bulk()
-    {
-        $this->request->allowMethod(['post']);
-        $ids    = (array)$this->request->getData('ids');
-        $action = $this->request->getData('bulk_action');
-
-        if (!$ids || !$action) {
-            $this->Flash->error(__('Please select quotations and an action.'));
-            return $this->redirect(['action' => 'index']);
-        }
-
-        switch ($action) {
-            case 'status':
-                // contoh sederhana: set APPROVED; bisa kamu ganti baca dari input status baru
-                $this->Quotations->updateAll(['status' => 'APPROVED'], ['id IN' => $ids]);
-                $this->Flash->success(__('Status updated for selected quotations.'));
-                break;
-
-            case 'export':
-                // TODO: implement export (CSV/PDF)
-                $this->Flash->success(__('Export triggered for selected quotations.'));
-                break;
-
-            case 'email':
-                // TODO: implement mailer
-                $this->Flash->success(__('Email queued for selected quotations.'));
-                break;
-
-            case 'po':
-                // TODO: implement generate PO
-                $this->Flash->success(__('PO generated for selected quotations.'));
-                break;
-
-            default:
-                $this->Flash->error(__('Invalid action.'));
-        }
-
-        return $this->redirect(['action' => 'index']);
-    }
-
-
-
+    /**
+     * VIEW: detail quotation
+     */
     public function view($id = null)
     {
-        $quotation = $this->Quotations->get($id, contain: ['Customer']);
+        if (!$id) {
+            throw new NotFoundException('ID tidak valid');
+        }
+
+        $quotation = $this->Quotations->get($id, [
+            'contain' => [
+                'Customers',
+                'SalesServices' => ['ParentServices'],
+                'PaymentTerms',
+                'QuotationLines' => ['Origin','Destination'],
+            ],
+        ]);
+
         $this->set(compact('quotation'));
     }
 
     /**
-     * Add method
-     *
-     * @return \Cake\Http\Response|null|void Redirects on successful add, renders view otherwise.
+     * ADD STEP-1: Header
      */
     public function add()
     {
         $quotation = $this->Quotations->newEmptyEntity();
+        $session   = $this->request->getSession();
+
+        $prefill = (array)$session->read(self::SESSION_KEY);
+        if (empty($prefill['valid_until'])) {
+            $prefill['valid_until'] = FrozenDate::today()->addDays(7)->format('Y-m-d');
+        }
+        if ($prefill) {
+            $quotation = $this->Quotations->patchEntity($quotation, $prefill, ['validate' => false]);
+        }
+
         if ($this->request->is('post')) {
-            $quotation = $this->Quotations->patchEntity($quotation, $this->request->getData());
-            if ($this->Quotations->save($quotation)) {
-                $this->Flash->success(__('The quotation has been saved.'));
-
-                return $this->redirect(['action' => 'index']);
+            $data = $this->request->getData() + [
+                'business_type' => 'freight',
+                'status'        => 'DRAFT',
+            ];
+            $tmp = $this->Quotations->newEntity($data, ['validate' => 'header']);
+            if ($tmp->getErrors()) {
+                $this->Flash->error('Header belum valid. Periksa input yang ditandai.');
+                $quotation = $tmp;
+            } else {
+                $session->write(self::SESSION_KEY, $data);
+                return $this->redirect(['action' => 'lines']);
             }
-            $this->Flash->error(__('The quotation could not be saved. Please, try again.'));
         }
-        $customer = $this->Quotations->Customer->find('list', limit: 200)->all();
-        $this->set(compact('quotation', 'customer'));
+
+        // dropdowns
+        $CustomersTbl = $this->fetchTable('Partners.Customers');
+        $customers = $CustomersTbl
+            ->find('asCustomers')
+            ->find('list', ['keyField' => 'id', 'valueField' => 'name'])
+            ->orderAsc($CustomersTbl->aliasField('name'))
+            ->all();
+
+        $paymentTerms   = $this->fetchTable('Sales.PaymentTerms')->find('list')->orderAsc('name')->all();
+        $serviceOptions = $this->serviceOptionsParentChildFlat();
+
+        $this->set(compact('quotation','customers','paymentTerms','serviceOptions'));
     }
 
     /**
-     * Edit method
-     *
-     * @param string|null $id Quotation id.
-     * @return \Cake\Http\Response|null|void Redirects on successful edit, renders view otherwise.
-     * @throws \Cake\Datasource\Exception\RecordNotFoundException When record not found.
+     * ADD STEP-2: Lines + final save (atomic)
      */
-    public function edit($id = null)
+    public function lines()
     {
-        $quotation = $this->Quotations->get($id, contain: []);
-        if ($this->request->is(['patch', 'post', 'put'])) {
-            $quotation = $this->Quotations->patchEntity($quotation, $this->request->getData());
-            if ($this->Quotations->save($quotation)) {
-                $this->Flash->success(__('The quotation has been saved.'));
-
-                return $this->redirect(['action' => 'index']);
-            }
-            $this->Flash->error(__('The quotation could not be saved. Please, try again.'));
+        $session = $this->request->getSession();
+        $header  = (array)$session->read(self::SESSION_KEY);
+        if (!$header) {
+            $this->Flash->warning('Header belum diisi.');
+            return $this->redirect(['action' => 'add']);
         }
-        $customer = $this->Quotations->Customer->find('list', limit: 200)->all();
-        $this->set(compact('quotation', 'customer'));
+
+        $quotation = $this->Quotations->newEmptyEntity();
+
+        if ($this->request->is(['post','put','patch'])) {
+            $lines = (array)$this->request->getData('quotation_lines');
+            foreach ($lines as &$ln) {
+                foreach (['origin_id','destination_id'] as $k) {
+                    if (isset($ln[$k]) && $ln[$k] !== '') $ln[$k] = (int)$ln[$k];
+                }
+                foreach (['qty','rate'] as $num) {
+                    if (isset($ln[$num]) && $ln[$num] !== '') {
+                        $v = (string)$ln[$num];
+                        $v = str_replace('.', '', $v);
+                        $v = str_replace(',', '.', $v);
+                        $ln[$num] = $v;
+                    }
+                }
+            }
+            unset($ln);
+
+            $payload = $header;
+            $payload['quotation_lines'] = $lines;
+
+            $quotation = $this->Quotations->newEntity($payload, [
+                'associated' => ['QuotationLines']
+            ]);
+
+            if ($this->Quotations->save($quotation, ['atomic'=>true])) {
+                $session->delete(self::SESSION_KEY);
+                $this->Flash->success('Quotation berhasil disimpan.');
+                return $this->redirect(['action' => 'view', $quotation->id]);
+            }
+
+            // tampilkan error detail
+            $errors = $quotation->getErrors();
+            if ($errors) {
+                $human = [];
+                foreach ($errors as $field => $errs) {
+                    if ($field === 'quotation_lines' && is_array($errs)) {
+                        foreach ($errs as $idx => $lineErrs) {
+                            foreach ($lineErrs as $f => $msgs) {
+                                $msg = is_array($msgs) ? implode(', ', $msgs) : $msgs;
+                                $human[] = "Line #".((int)$idx+1)." — {$f}: {$msg}";
+                            }
+                        }
+                    } else {
+                        $human[] = $field.': '.(is_array($errs)?implode(', ',$errs):$errs);
+                    }
+                }
+                $this->Flash->error('Gagal menyimpan:<br>'.implode('<br>', array_map('h',$human)), ['escape'=>false]);
+            } else {
+                $this->Flash->error('Gagal menyimpan. Periksa input yang ditandai.');
+            }
+        }
+
+        // header summary labels
+        $headerSummary = $header;
+        if (!empty($header['customer_id'])) {
+            $Cust = $this->fetchTable('Partners.Customers')
+                ->find('asCustomers')->select(['id','name'])
+                ->where(['Customers.id' => $header['customer_id']])->first();
+            if ($Cust) $headerSummary['customer_label'] = $Cust->name;
+        }
+        if (!empty($header['payment_term_id'])) {
+            $PT = $this->fetchTable('Sales.PaymentTerms')->find()->select(['id','name'])
+                ->where(['id' => $header['payment_term_id']])->first();
+            if ($PT) $headerSummary['payment_term_label'] = $PT->name;
+        }
+        if (!empty($header['sales_service_id'])) {
+            $Svc = $this->fetchTable('Sales.SalesServices')->find()
+                ->contain(['ParentServices' => fn($q)=>$q->select(['id','name'])])
+                ->select(['id','name','parent_id'])
+                ->where(['SalesServices.id' => $header['sales_service_id']])
+                ->first();
+            if ($Svc) {
+                $headerSummary['service_label'] = $Svc->parent_service
+                    ? $Svc->parent_service->name.' – '.$Svc->name
+                    : $Svc->name;
+            }
+        }
+
+        // locations
+        $Locations   = $this->fetchTable('Geo.Locations');
+        $valueField  = $Locations->getDisplayField(); // bisa 'full_name'
+        $locationOptions = $Locations->find('list', [
+                'keyField' => 'id',
+                'valueField' => $valueField
+            ])->orderAsc($valueField)->all();
+
+        $this->set(compact('quotation','headerSummary','locationOptions'));
     }
 
     /**
-     * Delete method
-     *
-     * @param string|null $id Quotation id.
-     * @return \Cake\Http\Response|null Redirects to index.
-     * @throws \Cake\Datasource\Exception\RecordNotFoundException When record not found.
+     * BULK: contoh aksi massal (misal ubah status jadi CONFIRMED)
      */
-    public function delete($id = null)
+    public function bulk()
     {
-        $this->request->allowMethod(['post', 'delete']);
-        $quotation = $this->Quotations->get($id);
-        if ($this->Quotations->delete($quotation)) {
-            $this->Flash->success(__('The quotation has been deleted.'));
-        } else {
-            $this->Flash->error(__('The quotation could not be deleted. Please, try again.'));
+        if ($this->request->is('post')) {
+            $ids    = (array)$this->request->getData('ids');       // array of id
+            $status = $this->request->getData('status') ?? 'DRAFT';
+
+            if ($ids) {
+                $this->Quotations->updateAll(
+                    ['status' => $status],
+                    ['id IN' => $ids]
+                );
+                $this->Flash->success(count($ids)." quotation(s) updated to {$status}.");
+            } else {
+                $this->Flash->warning('Tidak ada quotation yang dipilih.');
+            }
+            return $this->redirect(['action'=>'index']);
         }
 
-        return $this->redirect(['action' => 'index']);
+        // default tampilkan daftar untuk pilih bulk
+        return $this->redirect(['action'=>'index']);
+    }
+
+    // ==== UTIL ====
+    private function serviceOptionsParentChildFlat(): array
+    {
+        $Services = $this->fetchTable('Sales.SalesServices');
+
+        $q = $Services->find()
+            ->select([
+                'id'          => 'SalesServices.id',
+                'name'        => 'SalesServices.name',
+                'parent_name' => 'ParentServices.name',
+            ])
+            ->contain(['ParentServices' => fn($qq)=>$qq->select(['id','name'])])
+            ->whereNotNull('SalesServices.parent_id');
+
+        $orderCase = $q->newExpr("
+            CASE ParentServices.name
+                WHEN 'Sea'  THEN 1
+                WHEN 'Air'  THEN 2
+                WHEN 'Land' THEN 3
+                ELSE 99
+            END
+        ");
+
+        $rows = $q->order([$orderCase, 'ParentServices.name'=>'ASC', 'SalesServices.name'=>'ASC'])
+                  ->enableHydration(false)->toArray();
+
+        $opts = [];
+        foreach ($rows as $r) {
+            $opts[$r['id']] = ($r['parent_name'] ? $r['parent_name'].' – ' : '').$r['name'];
+        }
+        return $opts;
     }
 }

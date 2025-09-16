@@ -36,7 +36,35 @@ return function (RouteBuilder $routes): void {
     $routes->scope('/', function (RouteBuilder $builder): void {
         $builder->connect('/', ['controller' => 'Pages', 'action' => 'display', 'home']);
 		$builder->connect('/pages/*', 'Pages::display');
+		
+		// Auth routes (CakeDC Users)
+		$builder->connect('/login',    ['plugin' => 'CakeDC/Users', 'controller' => 'Users', 'action' => 'login']);
+		$builder->connect('/logout',   ['plugin' => 'CakeDC/Users', 'controller' => 'Users', 'action' => 'logout']);
+		$builder->connect('/register', ['plugin' => 'CakeDC/Users', 'controller' => 'Users', 'action' => 'register']); // opsional
+
+
 		$builder->fallbacks();
     });
+	
+	$routes->prefix('Admin', function (RouteBuilder $builder): void {
+        $builder->connect('/users', ['controller' => 'Users', 'action' => 'index']);
+        $builder->connect('/users/add', ['controller' => 'Users', 'action' => 'add']);
+        $builder->connect('/users/edit/:id', ['controller' => 'Users', 'action' => 'edit'])
+            ->setPass(['id'])->setPatterns(['id'=>'\d+']);
+        $builder->connect('/users/view/:id', ['controller' => 'Users', 'action' => 'view'])
+            ->setPass(['id'])->setPatterns(['id'=>'\d+']);
+
+        $builder->connect('/groups', ['controller' => 'Groups', 'action' => 'index']);
+        $builder->connect('/groups/add', ['controller' => 'Groups', 'action' => 'add']);
+        $builder->connect('/groups/edit/:id', ['controller' => 'Groups', 'action' => 'edit'])
+            ->setPass(['id'])->setPatterns(['id'=>'\d+']);
+        $builder->connect('/groups/view/:id', ['controller' => 'Groups', 'action' => 'view'])
+            ->setPass(['id'])->setPatterns(['id'=>'\d+']);
+			
+
+
+        $builder->fallbacks();
+    });
+
 
 };

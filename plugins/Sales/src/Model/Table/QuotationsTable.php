@@ -8,6 +8,11 @@ use Cake\ORM\RulesChecker;
 use Cake\ORM\Table;
 use Cake\Validation\Validator;
 
+use Cake\Event\EventInterface;
+use ArrayObject;
+use Cake\I18n\FrozenDate;
+use Sales\Service\NumberingService;
+
 /**
  * Quotations Model
  *
@@ -43,7 +48,7 @@ class QuotationsTable extends Table
         parent::initialize($config);
 
         $this->setTable('sales_quotations');
-        $this->setDisplayField('code');
+        $this->setDisplayField('number');
         $this->setPrimaryKey('id');
 
         $this->addBehavior('Timestamp');
@@ -51,20 +56,38 @@ class QuotationsTable extends Table
         $this->belongsTo('SalesServices', [
             'foreignKey' => 'sales_service_id',
             'className' => 'Sales.SalesServices',
+			'joinType'   => 'LEFT',
         ]);
         $this->hasMany('SalesQuotationLines', [
             'foreignKey' => 'sales_quotation_id',
             'className' => 'Sales.SalesQuotationLines',
         ]);
-		 $this->belongsTo('Customer', [
-            'foreignKey' => 'customer_id',
-            'className' => 'Partners.Partners',
-        ]);
+		if ($this->hasAssociation('Customers')) {
+			$this->getAssociation('Customers')->setClassName('Partners.Customers');
+		} else {
+			$this->belongsTo('Customers', [
+				'className'  => 'Partners.Customers',
+				'foreignKey' => 'customer_id',
+				'joinType'   => 'LEFT',
+			]);
+		}
+		
+		
+		
+		
+		
 		$this->belongsTo('PaymentTerms', [
 			'className'  => 'Sales.PaymentTerms',
 			'foreignKey' => 'payment_term_id',
 			'joinType'   => 'LEFT',
 		]);
+		
+		 $this->hasMany('QuotationLines', [
+            'className' => 'Sales.QuotationLines',
+            'foreignKey' => 'quotation_id',
+            'saveStrategy' => 'replace',
+            'dependent' => true,
+        ]);
 
     }
 
@@ -79,9 +102,9 @@ class QuotationsTable extends Table
         $validator
             ->scalar('number')
             ->maxLength('number', 50)
-            ->requirePresence('number', 'create')
-            ->notEmptyString('number')
-            ->add('number', 'unique', ['rule' => 'validateUnique', 'provider' => 'table']);
+            // ->requirePresence('number', 'create')
+             ->allowEmptyString('number', null, 'create')
+			 ->add('number', 'unique', ['rule' => 'validateUnique', 'provider' => 'table']);
 
         $validator
             ->integer('customer_id')
@@ -158,9 +181,61 @@ class QuotationsTable extends Table
      */
     public function buildRules(RulesChecker $rules): RulesChecker
     {
-        $rules->add($rules->isUnique(['number']), ['errorField' => 'number']);
-        $rules->add($rules->existsIn(['sales_service_id'], 'SalesServices'), ['errorField' => 'sales_service_id']);
-
-        return $rules;
+         $rules->add(function ($e) {
+				if (!$e->customer_id) return false;
+				$Customers = $this->getAssociation('Customers')->getTarget();
+				return (bool)$Customers->find('asCustomers')
+					->where([$Customers->aliasField('id') => $e->customer_id])
+					->first();
+			}, 'customerMustHaveRole', [
+				'errorField' => 'customer_id',
+				'message'    => 'Partner yang dipilih harus memiliki role Customer.'
+			]);
+			return $rules;
+	}
+	
+	public function beforeMarshal(EventInterface $event, ArrayObject $data, ArrayObject $options)
+	{
+		if (empty($data['business_type'])) {
+			$data['business_type'] = 'freight';
+		}
+	}
+	
+	 public function beforeSave(EventInterface $event, \Cake\Datasource\EntityInterface $entity, ArrayObject $options)
+    {
+        if ($entity->isNew() && empty($entity->code)) {
+            $date = $entity->quotation_date instanceof \DateTimeInterface
+                ? $entity->quotation_date
+                : FrozenDate::today();
+				
+				
+			$locator = TableRegistry::getTableLocator();
+            $svc  = new NumberingService($locator);
+            // contoh: reset per BULAN, prefix QTN, format: QTN-YYYYMM-0001
+            $entity->code = $svc->generate('quotation', $date, [
+                'reset'  => 'month',                 // 'year' | 'none'
+                'prefix' => 'QTN',
+                'padding'=> 4,
+                'format' => '{PREFIX}-{YYYY}{MM}-{SEQ}'
+            ]);
+        }
     }
-}
+	
+	
+	
+	// validator ringan khusus Step-1 (header saja)
+	public function validationHeader(Validator $v): Validator
+	{
+		return (new Validator())
+			->requirePresence('customer_id', 'create')->notEmptyString('customer_id', 'Pilih customer')
+			->requirePresence('sales_service_id', 'create')->notEmptyString('sales_service_id', 'Pilih service')
+			->requirePresence('payment_term_id', 'create')->notEmptyString('payment_term_id', 'Pilih payment term')
+			->allowEmptyDate('valid_until')        // boleh kosong
+			->date('valid_until')                  // jika diisi harus valid date
+			->allowEmptyString('note_1')
+			->allowEmptyString('note_2');
+	}
+	
+	
+	
+}	

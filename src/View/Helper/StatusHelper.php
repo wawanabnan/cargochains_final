@@ -27,4 +27,11 @@ class StatusHelper extends Helper
 
         return sprintf('<span class="badge %s">%s</span>', $class, h($status));
     }
+	
+	 public function class($status)
+    {
+        $status = $status ?: '';
+        $class  = isset($this->map[$status]) ? $this->map[$status] : 'secondary';
+        return 'bg-' . $class;
+    }
 }

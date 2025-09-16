@@ -19,16 +19,8 @@
             <h3><?= h($partner->name) ?></h3>
             <table>
                 <tr>
-                    <th><?= __('Code') ?></th>
-                    <td><?= h($partner->code) ?></td>
-                </tr>
-                <tr>
                     <th><?= __('Name') ?></th>
                     <td><?= h($partner->name) ?></td>
-                </tr>
-                <tr>
-                    <th><?= __('Tax Id') ?></th>
-                    <td><?= h($partner->tax_id) ?></td>
                 </tr>
                 <tr>
                     <th><?= __('Email') ?></th>
@@ -57,30 +49,6 @@
                 <tr>
                     <th><?= __('Modified') ?></th>
                     <td><?= h($partner->modified) ?></td>
-                </tr>
-                <tr>
-                    <th><?= __('Is Customer') ?></th>
-                    <td><?= $partner->is_customer ? __('Yes') : __('No'); ?></td>
-                </tr>
-                <tr>
-                    <th><?= __('Is Vendor') ?></th>
-                    <td><?= $partner->is_vendor ? __('Yes') : __('No'); ?></td>
-                </tr>
-                <tr>
-                    <th><?= __('Is Carrier') ?></th>
-                    <td><?= $partner->is_carrier ? __('Yes') : __('No'); ?></td>
-                </tr>
-                <tr>
-                    <th><?= __('Is Agent') ?></th>
-                    <td><?= $partner->is_agent ? __('Yes') : __('No'); ?></td>
-                </tr>
-                <tr>
-                    <th><?= __('Is Shipper') ?></th>
-                    <td><?= $partner->is_shipper ? __('Yes') : __('No'); ?></td>
-                </tr>
-                <tr>
-                    <th><?= __('Is Consignee') ?></th>
-                    <td><?= $partner->is_consignee ? __('Yes') : __('No'); ?></td>
                 </tr>
             </table>
             <div class="text">

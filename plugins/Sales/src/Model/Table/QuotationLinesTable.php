@@ -10,5 +10,16 @@ class QuotationLinesTable extends Table
         $this->setTable('sales_quotation_lines');
         $this->setPrimaryKey('id');
         $this->addBehavior('Timestamp');
+		
+		$this->belongsTo('Origin', [
+		  'className'  => 'Geo.Locations',
+		  'foreignKey' => 'origin_id',
+		  'joinType'   => 'LEFT',
+		]);
+		$this->belongsTo('Destination', [
+		  'className'  => 'Geo.Locations',
+		  'foreignKey' => 'destination_id',
+		  'joinType'   => 'LEFT',
+		]);
     }
 }

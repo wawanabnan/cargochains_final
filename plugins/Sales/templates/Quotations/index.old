@@ -86,40 +86,32 @@
 
     <div class="card">
       <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+        <table class="table table-bordered table-hover align-middle mb-0">
           <thead class="table-light">
             <tr>
               <th class="sticky-col start bg-white">
                 <input type="checkbox" id="checkAll">
-              </th>		
-			  <th><?= $this->Paginator->sort('number') ?></th>
-               <th><?= $this->Paginator->sort('customer_id') ?></th>
-               <th><?= $this->Paginator->sort('date') ?></th>
-               <th><?= $this->Paginator->sort('valid_until') ?></th>
-               <th><?= $this->Paginator->sort('sales_service_id') ?></th>
-               <th><?= $this->Paginator->sort('sales_user_id','Sales Person') ?></th>
-			   <th><?= $this->Paginator->sort('currency_id') ?></th>
-               <th><?= $this->Paginator->sort('payment_term_id') ?></th>
-	           <th><?= $this->Paginator->sort('grand_total') ?></th>
-			   <th><?= $this->Paginator->sort('status','Status') ?></th>
-  
-
+              </th>
+              <th><?= $this->Paginator->sort('code','Code') ?></th>
+              <th><?= $this->Paginator->sort('Customer.name','Customer') ?></th>
+              <th><?= $this->Paginator->sort('quotation_date','Date') ?></th>
+              <th class="text-end"><?= $this->Paginator->sort('total','Total') ?></th>
+              <th><?= $this->Paginator->sort('status','Status') ?></th>
             </tr>
           </thead>
           <tbody>
           <?php foreach ($quotations as $q): ?>
-            <tr>
-                    <td><?= h($quotation->number) ?></td>
-                    <td><?= $quotation->hasValue('customer') ? $this->Html->link($quotation->customer->name, ['controller' => 'Partners', 'action' => 'view', $quotation->customer->id]) : '' ?></td>
-                    <td><?= h($quotation->date) ?></td>
-                    <td><?= h($quotation->valid_until) ?></td>
-                    <td><?= $quotation->hasValue('sales_service') ? $this->Html->link($quotation->sales_service->name, ['controller' => 'SalesServices', 'action' => 'view', $quotation->sales_service->id]) : '' ?></td>
-                    <td><?= $quotation->sales_user_id === null ? '' : $this->Number->format($quotation->sales_user_id) ?></td>
-					<td><?= h($quotation->currency_id) ?></td>
-                    <td><?= $quotation->payment_term_id === null ? '' : $this->Number->format($quotation->payment_term_id) ?></td>
-                    <td><?= $quotation->grand_total === null ? '' : $this->Number->format($quotation->grand_total) ?></td>
-					<td><?= h($quotation->status) ?></td>
-                                </tr>
+            <tr class="clickable-row" data-href="<?= $this->Url->build(['action'=>'view',$q->id]) ?>">
+              <td class="sticky-col start bg-white">
+                <input type="checkbox" name="ids[]" value="<?= $q->id ?>" class="row-check"
+                       onclick="event.stopPropagation();">
+              </td>
+              <td><?= h($q->code) ?></td>
+              <td><?= h($q->customer->name ?? '') ?></td>
+              <td><?= h($q->quotation_date?->format('Y-m-d')) ?></td>
+              <td class="text-end"><?= $this->Number->format($q->total ?? 0) ?></td>
+              <td><span class="badge bg-secondary"><?= h($q->status) ?></span></td>
+            </tr>
           <?php endforeach; ?>
           </tbody>
         </table>
@@ -140,16 +132,16 @@
 
 </div>
 
-<?php $this->start('css'); ?>
-<style>
+<?php
+// CSS kecil untuk merapikan (letakkan di blok css)
+$this->Html->cssBlock("
   .table thead th { white-space: nowrap; }
-  .sticky-col.start { position: sticky; left: 0; z-index: 1; background: #fff; }
+  .sticky-col.start { position: sticky; left: 0; z-index: 1; }
   .clickable-row { cursor: pointer; }
-</style>
-<?php $this->end(); ?>
+");
 
-<?php $this->start('script'); ?>
-<script>
+// JS: checkAll + row click (abaikan klik pada checkbox)
+$this->Html->scriptBlock("
   const checkAll = document.getElementById('checkAll');
   if (checkAll) {
     checkAll.addEventListener('change', e => {
@@ -162,5 +154,5 @@
       window.location = row.dataset.href;
     });
   });
-</script>
-<?php $this->end(); ?>
+", ['block' => true]);
+?>

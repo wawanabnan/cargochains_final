@@ -3,90 +3,56 @@ declare(strict_types=1);
 
 namespace Sales\Controller;
 
+use Cake\I18n\FrozenDate;
+
 class OrdersController extends AppController
 {
-    public function initialize(): void
-    {
-        parent::initialize();
-        $this->loadModel('Sales.Orders');
-    }
+    protected $modelClass = 'Sales.SalesOrders';
 
-    public function index()
+    public function add(?int $quotationId = null)
     {
-        $this->paginate = [
-            'contain' => ['OrderLines'],
-            'order' => ['Orders.created' => 'DESC'],
-            'limit' => 20,
-        ];
-        $salesOrders = $this->paginate($this->SalesOrders);
-        $this->set(compact('Orders'));
-    }
+        $order = $this->SalesOrders->newEmptyEntity();
 
-    public function view($id = null)
-    {
-        $Order = $this->Orders->get($id, [
-            'contain' => ['OrderLines'],
-        ]);
-        $this->set(compact('Order'));
-    }
+        if ($quotationId) {
+            $Quotation = $this->fetchTable('Sales.Quotations')->get($quotationId, [
+                'contain' => ['Customer', 'PaymentTerms', 'SalesServices']
+            ]);
+            $order->quotation_id     = $Quotation->id;
+            $order->customer_id      = $Quotation->customer_id;
+            $order->sales_service_id = $Quotation->sales_service_id ?? null;
+            $order->payment_term_id  = $Quotation->payment_term_id ?? null;
+            $order->business_type    = $Quotation->business_type ?? 'freight';
+            $order->order_date       = FrozenDate::today();
+            $order->status           = 'OPEN';
+            $order->total            = $Quotation->total ?? null;
+            $this->Flash->info(__('Prefilled from quotation {0}', h($Quotation->code)));
+        }
 
-    public function add()
-    {
-        $entity = $this->Orders->newEmptyEntity();
         if ($this->request->is('post')) {
-            $data = $this->request->getData();
-            if (!empty($data['order_lines'])) {
-                foreach ($data['order_lines'] as &$ln) {
-                    $qty = (float)($ln['qty'] ?? 0);
-                    $price = (float)($ln['price'] ?? 0);
-                    $ln['amount'] = round($qty * $price, 2);
-                }
+            $order = $this->SalesOrders->patchEntity($order, $this->request->getData());
+            if (empty($order->order_date)) {
+                $order->order_date = FrozenDate::today();
             }
-            $entity = $this->Orders->patchEntity($entity, $data, [
-                'associated' => ['OrderLines']
-            ]);
-            if ($this->SalesOrders->save($entity)) {
-                $this->Flash->success('Order created');
-                return $this->redirect(['action' => 'view', $entity->id]);
+            if (empty($order->business_type)) {
+                $order->business_type = 'freight';
             }
-            $this->Flash->error('Failed to save');
-        }
-        $this->set(compact('entity'));
-    }
 
-    public function edit($id = null)
-    {
-        $entity = $this->sOrders->get($id, ['contain' => ['OrderLines']]);
-        if ($this->request->is(['patch','post','put'])) {
-            $data = $this->request->getData();
-            if (!empty($data['order_lines'])) {
-                foreach ($data['order_lines'] as &$ln) {
-                    $qty = (float)($ln['qty'] ?? 0);
-                    $price = (float)($ln['price'] ?? 0);
-                    $ln['amount'] = round($qty * $price, 2);
-                }
+            if ($this->SalesOrders->save($order)) {
+                $this->Flash->success(__('Order saved: {0}', h($order->code)));
+                return $this->redirect(['action' => 'view', $order->id]);
             }
-            $entity = $this->Orders->patchEntity($entity, $data, [
-                'associated' => ['OrderLines']
-            ]);
-            if ($this->SalesOrders->save($entity)) {
-                $this->Flash->success('Order updated');
-                return $this->redirect(['action' => 'view', $entity->id]);
-            }
-            $this->Flash->error('Failed to update');
+            $this->Flash->error(__('Unable to save order.'));
         }
-        $this->set(compact('entity'));
-    }
 
-    public function delete($id = null)
-    {
-        $this->request->allowMethod(['post','delete']);
-        $entity = $this->Orders->get($id);
-        if ($this->Orders->delete($entity)) {
-            $this->Flash->success('Deleted');
-        } else {
-            $this->Flash->error('Delete failed');
-        }
-        return $this->redirect(['action' => 'index']);
+        $Partners = $this->fetchTable('Partners.Partners');
+        $customers = $Partners->find('list', keyField:'id', valueField:'name')->orderAsc('name')->toArray();
+
+        $PaymentTerms = $this->fetchTable('Sales.PaymentTerms');
+        $paymentTermsList = $PaymentTerms->find('list', keyField:'id', valueField:'name')->orderAsc('name')->toArray();
+
+        $SalesServices = $this->fetchTable('Sales.SalesServices');
+        $services = $SalesServices->find('list', keyField:'id', valueField:'name')->orderAsc('name')->toArray();
+
+        $this->set(compact('order','customers','paymentTermsList','services'));
     }
 }

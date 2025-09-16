@@ -12,6 +12,11 @@ return static function (RouteBuilder $routes): void {
         $routes->connect('/quotations/view/{id}', ['controller' => 'Quotations', 'action' => 'view', '_name' => 'sales:quotations:view'])->setPatterns(['id'=>'\d+'])->setPass(['id']);
         $routes->connect('/quotations/edit/{id}', ['controller' => 'Quotations', 'action' => 'edit', '_name' => 'sales:quotations:edit'])->setPatterns(['id'=>'\d+'])->setPass(['id']);
         $routes->connect('/quotations/delete/{id}', ['controller' => 'Quotations', 'action' => 'delete', '_name' => 'sales:quotations:delete'])->setPatterns(['id'=>'\d+'])->setPass(['id']);
-        $routes->fallbacks(DashedRoute::class);
+		// plugins/Sales/config/routes.php
+		$routes->connect('/quotations/lines', ['controller'=>'Quotations','action'=>'lines']);  // Step-2 (final save)
+
+		
+
+	   $routes->fallbacks(DashedRoute::class);
     });
 };
